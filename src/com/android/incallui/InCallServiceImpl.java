@@ -36,7 +36,6 @@ public class InCallServiceImpl extends InCallService {
         AudioModeProvider.getInstance().setPhone(phone);
         TelecomAdapter.getInstance().setPhone(phone);
         InCallPresenter.getInstance().setPhone(phone);
-        CallRecorder.getInstance().setUp(getApplicationContext());
         TelecomAdapter.getInstance().setContext(InCallServiceImpl.this);
     }
 

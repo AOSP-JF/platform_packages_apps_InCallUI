@@ -71,8 +71,6 @@ public class CallButtonFragment
     private CompoundButton mPauseVideoButton;
     private ImageButton mAddParticipantButton;
     private ImageButton mManageVideoCallConferenceButton;
-    private CompoundButton mCallRecordButton;
-    private ImageButton mAddToBlacklistButton;
     private ImageButton mOverflowButton;
 
     private PopupMenu mAudioModePopup;
@@ -80,7 +78,6 @@ public class CallButtonFragment
     private PopupMenu mOverflowPopup;
 
     private int mPrevAudioMode = 0;
-    private boolean mRecordingCall;
 
     // Constants for Drawable.setAlpha()
     private static final int HIDDEN = 0;
@@ -137,10 +134,6 @@ public class CallButtonFragment
         mManageVideoCallConferenceButton = (ImageButton) parent.findViewById(
             R.id.manageVideoCallConferenceButton);
         mManageVideoCallConferenceButton.setOnClickListener(this);
-        mCallRecordButton = (CompoundButton) parent.findViewById(R.id.callRecordButton);
-        mCallRecordButton.setOnClickListener(this);
-        mAddToBlacklistButton = (ImageButton) parent.findViewById(R.id.addToBlacklistButton);
-        mAddToBlacklistButton.setOnClickListener(this);
         mOverflowButton = (ImageButton) parent.findViewById(R.id.overflowButton);
         mOverflowButton.setOnClickListener(this);
 
@@ -213,12 +206,6 @@ public class CallButtonFragment
                 getPresenter().pauseVideoClicked(
                         !mPauseVideoButton.isSelected() /* pause */);
                 break;
-            case R.id.callRecordButton:
-                getPresenter().callRecordClicked(!mCallRecordButton.isSelected());
-                break;
-            case R.id.addToBlacklistButton:
-                getPresenter().addToBlacklistClicked();
-                break;
             case R.id.overflowButton:
                 mOverflowPopup.show();
                 break;
@@ -253,7 +240,6 @@ public class CallButtonFragment
                 mHoldButton,
                 mSwitchCameraButton,
                 mPauseVideoButton,
-                mCallRecordButton
         };
 
         for (View button : compoundButtons) {
@@ -269,7 +255,6 @@ public class CallButtonFragment
             mChangeToVideoButton,
             mAddCallButton,
             mMergeButton,
-            mAddToBlacklistButton,
             mOverflowButton
         };
 
@@ -366,8 +351,6 @@ public class CallButtonFragment
         mMergeButton.setEnabled(isEnabled);
         mPauseVideoButton.setEnabled(isEnabled);
         mAddParticipantButton.setEnabled(isEnabled);
-        mCallRecordButton.setEnabled(isEnabled);
-        mAddToBlacklistButton.setEnabled(isEnabled);
         mManageVideoCallConferenceButton.setEnabled(isEnabled);
         mOverflowButton.setEnabled(isEnabled);
     }
@@ -478,23 +461,6 @@ public class CallButtonFragment
     }
 
     @Override
-    public void showCallRecordButton(boolean show) {
-        mCallRecordButton.setVisibility(show ? View.VISIBLE : View.GONE);
-    }
-
-    @Override
-    public void setCallRecordButton(boolean isRecording) {
-        mCallRecordButton.setSelected(isRecording);
-        mRecordingCall = isRecording;
-        updateCallRecordMenuItemTitle();
-    }
-
-    @Override
-    public void showAddToBlacklistButton(boolean show) {
-        mAddToBlacklistButton.setVisibility(show ? View.VISIBLE : View.GONE);
-    }
-
-    @Override
     public void showOverflowButton(boolean show) {
         mOverflowButton.setVisibility(show ? View.VISIBLE : View.GONE);
     }
@@ -579,8 +545,7 @@ public class CallButtonFragment
     @Override
     public void configureOverflowMenu(boolean showMergeMenuOption, boolean showAddMenuOption,
             boolean showHoldMenuOption, boolean showSwapMenuOption,
-            boolean showAddParticipantOption, boolean showManageConferenceVideoCallOption,
-            boolean showCallRecordOption, boolean showAddToBlacklistOption) {
+            boolean showAddParticipantOption, boolean showManageConferenceVideoCallOption) {
         if (mOverflowPopup == null) {
             final ContextThemeWrapper contextWrapper = new ContextThemeWrapper(getActivity(),
                     R.style.InCallPopupMenuStyle);
@@ -608,12 +573,6 @@ public class CallButtonFragment
                             break;
                         case R.id.overflow_add_participant_menu_item:
                             getPresenter().addParticipantClicked();
-                            break;
-                        case R.id.overflow_call_record_menu_item:
-                            getPresenter().callRecordClicked(!mRecordingCall);
-                            break;
-                        case R.id.overflow_add_to_blacklist_menu_item:
-                            getPresenter().addToBlacklistClicked();
                             break;
                         case R.id.overflow_manage_conference_menu_item:
                             onManageVideoCallConferenceClicked();
@@ -644,11 +603,6 @@ public class CallButtonFragment
         menu.findItem(R.id.overflow_add_participant_menu_item).setVisible(showAddParticipantOption);
         menu.findItem(R.id.overflow_manage_conference_menu_item).setVisible(
             showManageConferenceVideoCallOption);
-        menu.findItem(R.id.overflow_add_to_blacklist_menu_item).setVisible(
-                showAddToBlacklistOption);
-
-        menu.findItem(R.id.overflow_call_record_menu_item).setVisible(showCallRecordOption);
-        updateCallRecordMenuItemTitle();
 
         mOverflowButton.setEnabled(menu.hasVisibleItems());
     }
@@ -714,16 +668,6 @@ public class CallButtonFragment
         Log.d(this, "- onDismiss: " + menu);
         mAudioModePopupVisible = false;
         updateAudioButtons(getPresenter().getSupportedAudio());
-    }
-
-    private void updateCallRecordMenuItemTitle() {
-        if (mOverflowPopup == null) {
-            return;
-        }
-        MenuItem callRecordItem = mOverflowPopup.getMenu().findItem(
-                R.id.overflow_call_record_menu_item);
-        callRecordItem.setTitle(mRecordingCall
-                ? R.string.menu_stop_record : R.string.menu_start_record);
     }
 
     /**

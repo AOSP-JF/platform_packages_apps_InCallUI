@@ -34,7 +34,6 @@ import com.android.incallui.InCallPresenter.InCallState;
 import com.android.incallui.InCallPresenter.InCallStateListener;
 import com.android.incallui.InCallPresenter.IncomingCallListener;
 import com.android.incallui.InCallPresenter.InCallDetailsListener;
-import com.android.internal.telephony.util.BlacklistUtils;
 
 import java.util.Objects;
 
@@ -48,7 +47,6 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
 
     private static final String KEY_AUTOMATICALLY_MUTED = "incall_key_automatically_muted";
     private static final String KEY_PREVIOUS_MUTE_STATE = "incall_key_previous_mute_state";
-    private static final String RECORDING_WARNING_PRESENTED = "recording_warning_presented";
 
     private Call mCall;
     private boolean mAutomaticallyMuted = false;
@@ -337,63 +335,6 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         getUi().setPauseVideoButton(pause);
     }
 
-    public void callRecordClicked(boolean startRecording) {
-        CallRecorder recorder = CallRecorder.getInstance();
-        if (startRecording) {
-            Context context = getUi().getContext();
-            final SharedPreferences prefs = InCallApp.getPrefs(context);
-            boolean warningPresented = prefs
-                    .getBoolean(RECORDING_WARNING_PRESENTED, false);
-            if (!warningPresented) {
-                new AlertDialog.Builder(context)
-                        .setTitle(R.string.recording_warning_title)
-                        .setMessage(R.string.recording_warning_text)
-                        .setPositiveButton(R.string.menu_start_record,
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        prefs
-                                                .edit()
-                                                .putBoolean(RECORDING_WARNING_PRESENTED, true)
-                                                .apply();
-                                        callRecordClicked(true);
-                                    }
-                                })
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .create()
-                        .show();
-                return;
-            }
-            recorder.startRecording(mCall.getNumber(),
-                    mCall.getCreateTimeMillis());
-        } else if (recorder.isRecording()) {
-            recorder.finishRecording();
-        }
-        getUi().setCallRecordButton(recorder.isRecording());
-    }
-
-    public void addToBlacklistClicked() {
-        final String number = mCall.getNumber();
-        final Context context = getUi().getContext();
-        final String message = context.getString(R.string.blacklist_dialog_message, number);
-
-        new AlertDialog.Builder(context)
-                .setTitle(R.string.blacklist_dialog_title)
-                .setMessage(message)
-                .setPositiveButton(R.string.pause_prompt_yes,
-                        new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Log.d(this, "hanging up due to blacklist: " + mCall.getId());
-                        TelecomAdapter.getInstance().disconnectCall(mCall.getId());
-                        BlacklistUtils.addOrUpdate(context, number,
-                                BlacklistUtils.BLOCK_CALLS, BlacklistUtils.BLOCK_CALLS);
-                    }
-                })
-                .setNegativeButton(R.string.pause_prompt_no, null)
-                .show();
-    }
-
     private void updateUi(InCallState state, Call call) {
         Log.d(this, "Updating call UI for call: ", call);
 
@@ -443,15 +384,12 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         ui.showChangeToVideoButton(false);
         ui.showAddCallButton(false);
         ui.showMergeButton(false);
-        ui.showCallRecordButton(false);
 
         // Show all video-call-related buttons.
         ui.showChangeToVoiceButton(true);
         ui.showSwitchCameraButton(true);
         ui.showPauseVideoButton(true);
 
-        boolean showAddToBlacklistOption = !TextUtils.isEmpty(call.getNumber())
-                && BlacklistUtils.isBlacklistEnabled(context);
         boolean showAddParticipantOption = call.can(android.telecom.Call.Details.ADD_PARTICIPANT);
         boolean showManageVideoCallConferenceOption =
                 call.can(android.telecom.Call.Details.CAPABILITY_MANAGE_CONFERENCE);
@@ -465,7 +403,6 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         int activeButtonCount = supportHold ? 4 : 3;
         int buttonCount = activeButtonCount;
         if (showAddParticipantOption) buttonCount++;
-        if (showAddToBlacklistOption) buttonCount++;
         if (showManageVideoCallConferenceOption) buttonCount++;
 
         boolean needOverflow = buttonCount > maxButtonCount;
@@ -488,21 +425,13 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         } else {
             ui.showManageConferenceVideoCallButton(false);
         }
-        if (showAddToBlacklistOption && activeButtonCount < populatableButtonCount) {
-            ui.showAddToBlacklistButton(true);
-            showAddToBlacklistOption = false;
-            activeButtonCount++;
-        } else {
-            ui.showAddToBlacklistButton(false);
-        }
 
         if (needOverflow) {
             ui.configureOverflowMenu(
                     false /* showMergeOption */, false /* showAddMenuOption */,
                     false /* showHoldMenuOption */, false /* showSwapOption */,
                     showAddParticipantOption,
-                    showManageVideoCallConferenceOption,
-                    false /* showCallRecordOption */, showAddToBlacklistOption);
+                    showManageVideoCallConferenceOption);
             ui.showOverflowButton(true);
         } else {
             ui.showOverflowButton(false);
@@ -577,14 +506,6 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         boolean showHoldOption = !showSwapOption && (enableHoldOption || supportHold);
         ui.setHold(isCallOnHold);
 
-        boolean showAddToBlacklistOption = !TextUtils.isEmpty(call.getNumber())
-                && BlacklistUtils.isBlacklistEnabled(context);
-
-        final CallRecorder recorder = CallRecorder.getInstance();
-        boolean showCallRecordOption =
-                recorder.isEnabled() && call.getState() == Call.State.ACTIVE;
-        ui.setCallRecordButton(showCallRecordOption && recorder.isRecording());
-
         int activeButtonCount = 3; // audio, mute, dialpad
         int buttonCount = activeButtonCount;
         if (showHoldOption) buttonCount++;
@@ -593,8 +514,6 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         if (showAddCallOption) buttonCount++;
         if (showMergeOption) buttonCount++;
         if (showAddParticipantOption) buttonCount++;
-        if (showAddToBlacklistOption) buttonCount++;
-        if (showCallRecordOption) buttonCount++;
 
         if (buttonCount == (maxButtonCount + 1) && showHoldOption && !enableHoldOption) {
             // don't populate a hold button that is disabled anyway
@@ -651,20 +570,6 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         } else {
             ui.showAddParticipantButton(false);
         }
-        if (showCallRecordOption && activeButtonCount < populatableButtonCount) {
-            ui.showCallRecordButton(true);
-            showCallRecordOption = false;
-            activeButtonCount++;
-        } else {
-            ui.showCallRecordButton(false);
-        }
-        if (showAddToBlacklistOption && activeButtonCount < populatableButtonCount) {
-            ui.showAddToBlacklistButton(true);
-            showAddToBlacklistOption = false;
-            activeButtonCount++;
-        } else {
-            ui.showAddToBlacklistButton(false);
-        }
 
         if (needOverflow) {
             ui.configureOverflowMenu(
@@ -673,9 +578,7 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
                     showHoldOption && enableHoldOption /* showHoldMenuOption */,
                     showSwapOption,
                     showAddParticipantOption,
-                    false /* showManageVideoCallConferenceOption */,
-                    showCallRecordOption,
-                    showAddToBlacklistOption);
+                    false /* showManageVideoCallConferenceOption */);
             ui.showOverflowButton(true);
         } else {
             ui.showOverflowButton(false);
@@ -731,9 +634,6 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         void showMergeButton(boolean show);
         void showPauseVideoButton(boolean show);
         void setPauseVideoButton(boolean isPaused);
-        void showCallRecordButton(boolean show);
-        void setCallRecordButton(boolean isRecording);
-        void showAddToBlacklistButton(boolean show);
         void showOverflowButton(boolean show);
         void displayDialpad(boolean on, boolean animate);
         void displayModifyCallOptions();
@@ -742,8 +642,7 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         void setSupportedAudio(int mask);
         void configureOverflowMenu(boolean showMergeMenuOption, boolean showAddMenuOption,
                 boolean showHoldMenuOption, boolean showSwapMenuOption,
-                boolean showAddParticipantOption, boolean showManageConferenceVideoCallOption,
-                boolean showCallRecordOption, boolean showAddToBlacklistOption);
+                boolean showAddParticipantOption, boolean showManageConferenceVideoCallOption);
         Context getContext();
     }
 
