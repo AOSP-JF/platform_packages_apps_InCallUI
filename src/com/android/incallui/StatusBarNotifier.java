@@ -460,16 +460,9 @@ public class StatusBarNotifier implements InCallPresenter.InCallStateListener {
      */
     private int getContentString(Call call) {
         int resId = R.string.notification_ongoing_call;
-        if (call.can(Details.CAPABILITY_WIFI)) {
-            resId = R.string.notification_ongoing_call_wifi;
-        }
 
         if (call.getState() == Call.State.INCOMING || call.getState() == Call.State.CALL_WAITING) {
-            if (call.can(Details.CAPABILITY_WIFI)) {
-                resId = R.string.notification_incoming_call_wifi;
-            } else {
                 resId = R.string.notification_incoming_call;
-            }
         } else if (call.getState() == Call.State.ONHOLD) {
             resId = R.string.notification_on_hold;
         } else if (Call.State.isDialing(call.getState())) {

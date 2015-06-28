@@ -489,12 +489,10 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
             String connectionLabel,
             Drawable callStateIcon,
             String gatewayNumber,
-            boolean isWifi,
             boolean isConference) {
         boolean isGatewayCall = !TextUtils.isEmpty(gatewayNumber);
         CharSequence callStateLabel = getCallStateLabelFromState(state, videoState,
-                sessionModificationState, disconnectCause, connectionLabel, isGatewayCall, isWifi,
-                isConference);
+                sessionModificationState, disconnectCause, connectionLabel, isGatewayCall, isConference);
 
         Log.v(this, "setCallState " + callStateLabel);
         Log.v(this, "DisconnectCause " + disconnectCause.toString());
@@ -665,7 +663,7 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
      */
     private CharSequence getCallStateLabelFromState(int state, int videoState,
             int sessionModificationState, DisconnectCause disconnectCause, String label,
-            boolean isGatewayCall, boolean isWifi, boolean isConference) {
+            boolean isGatewayCall, boolean isConference) {
         final Context context = getView().getContext();
         CharSequence callStateLabel = null;  // Label to display as part of the call banner
 
@@ -679,7 +677,7 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
             case Call.State.ACTIVE:
                 // We normally don't show a "call state label" at all in this state
                 // (but we can use the call state label to display the provider name).
-                if ((isAccount || isWifi || isConference) && hasSuggestedLabel) {
+                if ((isAccount || isConference) && hasSuggestedLabel) {
                     callStateLabel = label;
                 } else if (sessionModificationState
                         == Call.SessionModificationState.REQUEST_FAILED) {
@@ -696,7 +694,7 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
                 break;
             case Call.State.CONNECTING:
             case Call.State.DIALING:
-                if (hasSuggestedLabel && !isWifi) {
+                if (hasSuggestedLabel) {
                     callStateLabel = context.getString(R.string.calling_via_template, label);
                 } else {
                     callStateLabel = context.getString(R.string.card_title_dialing);
@@ -707,9 +705,7 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
                 break;
             case Call.State.INCOMING:
             case Call.State.CALL_WAITING:
-                if (isWifi && hasSuggestedLabel) {
-                    callStateLabel = label;
-                } else if (isAccount) {
+                if (isAccount) {
                     callStateLabel = context.getString(R.string.incoming_via_template, label);
                 } else if (VideoProfile.VideoState.isBidirectional(videoState)) {
                     callStateLabel = context.getString(R.string.notification_incoming_video_call);

@@ -18,6 +18,7 @@ package com.android.incallui;
 
 import android.telecom.CameraCapabilities;
 import android.telecom.Connection;
+import android.telecom.Connection.VideoProvider;
 import android.telecom.InCallService.VideoCall;
 import android.telecom.VideoProfile;
 
@@ -70,25 +71,31 @@ public class InCallVideoCallListener extends VideoCall.Listener {
     /**
      * Handles a session modification response.
      *
-     * @param status Status of the session modify request.  Valid values are
-     *               {@link Connection.VideoProvider#SESSION_MODIFY_REQUEST_SUCCESS},
-     *               {@link Connection.VideoProvider#SESSION_MODIFY_REQUEST_FAIL},
-     *               {@link Connection.VideoProvider#SESSION_MODIFY_REQUEST_INVALID}
+     * @param status Status of the session modify request. Valid values are
+     *            {@link Connection.VideoProvider#SESSION_MODIFY_REQUEST_SUCCESS},
+     *            {@link Connection.VideoProvider#SESSION_MODIFY_REQUEST_FAIL},
+     *            {@link Connection.VideoProvider#SESSION_MODIFY_REQUEST_INVALID}
      * @param requestedProfile
      * @param responseProfile The actual profile changes made by the peer device.
      */
     @Override
-    public void onSessionModifyResponseReceived(
-            int status, VideoProfile requestedProfile, VideoProfile responseProfile) {
-        boolean modifySucceeded =
-                requestedProfile.getVideoState() == responseProfile.getVideoState();
-        boolean isVideoCall =
-                VideoProfile.VideoState.isBidirectional(responseProfile.getVideoState());
-
-        if (modifySucceeded && isVideoCall) {
-            InCallVideoCallListenerNotifier.getInstance().upgradeToVideoSuccess(mCall);
-        } else if (!modifySucceeded || status != Connection.VideoProvider.SESSION_MODIFY_REQUEST_SUCCESS) {
+    public void onSessionModifyResponseReceived(int status, VideoProfile requestedProfile,
+            VideoProfile responseProfile) {
+        Log.d(this, "onSessionModifyResponseReceived status=" + status + " requestedProfile="
+                + requestedProfile + " responseProfile=" + responseProfile);
+        if (status != VideoProvider.SESSION_MODIFY_REQUEST_SUCCESS) {
             InCallVideoCallListenerNotifier.getInstance().upgradeToVideoFail(mCall);
+        } else if (requestedProfile != null && responseProfile != null) {
+            boolean modifySucceeded = requestedProfile.getVideoState() ==
+                    responseProfile.getVideoState();
+            boolean isVideoCall = VideoProfile.VideoState.isVideo(responseProfile.getVideoState());
+            if (modifySucceeded && isVideoCall) {
+                InCallVideoCallListenerNotifier.getInstance().upgradeToVideoSuccess(mCall);
+            } else if (!modifySucceeded) {
+                InCallVideoCallListenerNotifier.getInstance().upgradeToVideoFail(mCall);
+            }
+        } else {
+            Log.d(this, "onSessionModifyResponseReceived request and response Profiles are null");
         }
     }
 
@@ -112,6 +119,16 @@ public class InCallVideoCallListener extends VideoCall.Listener {
         InCallVideoCallListenerNotifier.getInstance().peerDimensionsChanged(mCall, width, height);
     }
 
+    /**
+     * Handles a change to the video quality of the call.
+     *
+     * @param videoQuality The updated video call quality.
+     */
+    @Override
+    public void onVideoQualityChanged(int videoQuality) {
+        InCallVideoCallListenerNotifier.getInstance().videoQualityChanged(mCall, videoQuality);
+    }
+    
     /**
      * Handles a change to the call data usage.  No implementation as the in-call UI does not
      * display data usage.

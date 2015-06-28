@@ -449,6 +449,15 @@ public class VideoCallFragment extends BaseFragment<VideoCallPresenter,
     }
 
     /**
+     * Displays a message on the UI that the video call quality has changed.
+     *
+     */
+    @Override
+    public void showVideoQualityChanged(int videoQuality) {
+        Log.d(this, "showVideoQualityChanged. Video quality changed to " + videoQuality);
+    }
+    
+    /**
      * Cleans up the video telephony surfaces.  Used when the presenter indicates a change to an
      * audio-only state.  Since the surfaces are static, it is important to ensure they are cleaned
      * up promptly.
